@@ -1,0 +1,32 @@
+{
+  "name": "dsh-packager",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Out-of-box packager for deepseek-harness (dsh) — specify DSH_DIR and build desktop installer without patching dsh",
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "packageManager": "pnpm@11.7.0",
+  "main": "src/main.mjs",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:dir": "node scripts/build.mjs --dir",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux",
+    "typecheck": "tsc --noEmit",
+    "dev": "electron .",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "execa": "^9.5.1"
+  },
+  "devDependencies": {
+    "electron": "^32.2.0",
+    "electron-builder": "^25.1.8",
+    "typescript": "^6.0.3"
+  }
+}

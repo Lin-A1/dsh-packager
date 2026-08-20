@@ -1,0 +1,34 @@
+appId: com.deepseek.dsh-desktop
+productName: dsh-desktop
+directories:
+  buildResources: build
+  output: dist
+files:
+  - "src/**/*"
+  - "resources/**/*"
+  - "package.json"
+extraResources:
+  # bundled dsh artifacts — produced by scripts/build.mjs from external DSH_DIR
+  - from: "resources/dsh"
+    to: "dsh"
+    filter: ["**/*"]
+asar: true
+# keep profile resolution outside asar: DSH_HOME stays at ~/.dsh (resolveDshHome)
+# see deepseek-harness/packages/util/home-paths/src/index.ts
+win:
+  target: nsis
+  icon: build/icon.ico
+  sign: null
+mac:
+  target: dmg
+  icon: build/icon.icns
+linux:
+  target: [AppImage, deb]
+  icon: build/icon.png
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+publish:
+  provider: github
+  releaseType: draft
