@@ -49,22 +49,51 @@ node scripts/generate-icons.mjs
 - `frame:false` 去边框，`titleBarOverlay` 在 Windows 11 保留窗口控制按钮；拖动需 `-webkit-app-region: drag`（已在 overlay 高度 28px 内）。
 - 单例 `BrowserWindow`，`app.on('activate')` 仅 `show()`，`window-all-closed` 不退出，`before-quit` 才 `kill dsh`。
 
+## 不同版本 DSH
+
+打包器不绑定 `deepseek-harness` 版本，`DSH_DIR` 指向任意检出即可，`scripts/build.mjs` 会读取并打印 `@deepseek-ai/dsh-root` 版本 `scripts/build.mjs:1`，拷贝的 `resources/dsh/package.json` 即该版本。
+
+```sh
+# 用 dsh-hub 自带的 deepseek-harness（跟随 master，当前 0.1.0-rc.8）
+npm run build -- --dsh-dir ../deepseek-harness
+
+# 用指定 tag / 分支 / commit
+git clone https://github.com/deepseek-ai/deepseek-harness.git --branch v0.1.0-rc.7 /tmp/dsh-rc7
+pnpm --dir /tmp/dsh-rc7 run build
+npm run build -- --dsh-dir /tmp/dsh-rc7
+# 产物的 resources/dsh/package.json 即 0.1.0-rc.7，安装包文件名仍为 packager 的 0.1.0（可在 electron-builder.yml 改 productName/version 区分）
+
+# 用本地开发版
+npm run build -- --dsh-dir G:\Code\Agents\Custom\dsh-hub\deepseek-harness --skip-build
+```
+
+`dsh-hub` 的 `deepseek-harness` submodule 跟踪 `master` `AGENTS.md:3`，`packagers/dsh-packager` 的 `DSH_DIR` 可覆盖为任意版本，互不侵入。
+
+| DSH 版本 | DSH_DIR 示例 | 说明 |
+|---|---|---|
+| `master HEAD` (`0.1.0-rc.8`) | `../deepseek-harness` | dsh-hub 自带，默认 |
+| `v0.1.0-rc.7` | `/tmp/dsh-rc7` | 旧 tag 验证 |
+| 本地改动 | `G:\path\to\dsh` | 开发版，`--skip-build` 仅拷 `lib/dist` |
+
 ## 原理
 
 ```
-外部 DSH_DIR (deepseek-harness)
+外部 DSH_DIR (deepseek-harness, 任意版本)
   pnpm run build → apps/cli/lib + apps/web/dist
-        ↓ scripts/build.mjs --dsh-dir
+        ↓ scripts/build.mjs --dsh-dir（读取并打印 dsh 版本）
 packagers/dsh-packager/resources/dsh (extraResources, asar 外)
         ↓ electron-builder / electron-packager
 dist/win-unpacked 或 dist/dsh-desktop-win32-x64
 ```
 
-`DSH_HOME` 默认 `~/.dsh`，已装 `dsh` 的用户无感；隔离用 `DSH_HOME=%APPDATA%\dsh-desktop` 启动。
+`DSH_HOME` 默认 `~/.dsh`，已装 `dsh` 的用户无感；隔离用 `DSH_HOME=%APPDATA%\dsh-desktop` 启动。不同 `DSH` 版本的 `profile` 兼容由 `deepseek-harness` 自身保证（`SESSION_FORMAT_VERSION` 未变则直接共享 `~/.dsh`）。
 
 ## 下载
 
-- **dsh-packager**：https://github.com/Lin-A1/dsh-packager/releases（`dsh-desktop-win32-x64.zip` 解压即用，`dsh-desktop Setup 0.1.0.exe` NSIS 安装包）
+- **dsh-packager**：https://github.com/Lin-A1/dsh-packager/releases
+  - `dsh-desktop-win32-x64.zip` 解压即用（`dsh-desktop.exe`，含当前 `DSH` 版本的 `resources/dsh`）
+  - `dsh-desktop Setup 0.1.0.exe` NSIS 安装包（需管理员/开发者模式，`winCodeSign`）
+  - 各 `Release` 的 `Notes` 标注 `DSH` 版本（`@deepseek-ai/dsh-root@x.y.z`）
 - **dsh-hub** 复导出：https://github.com/Lin-A1/dsh-hub/releases（同上，顶层 `packagers/dsh-packager` 指针）
 
 ## 要求
