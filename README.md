@@ -1,43 +1,79 @@
-# dsh-packager
+# dsh-packager — DeepSeek Harness 桌面打包器
 
-Non-invasive out-of-box packager for `deepseek-harness` (`dsh`). Specify `DSH_DIR` and build a desktop installer without patching `dsh` source. Plugin hot-plug (`dsh plugin add`) stays outside the bundle via `$DSH_HOME/profiles/<name>/node_modules`.
+> 指定 `DSH_DIR` 一键产出开箱即用的桌面安装包，不侵入 `deepseek-harness` 源码；打包后仍保留 `dsh plugin add` 热插拔。
 
-This repo is intended to be added as a **top-level submodule** to `dsh-hub`:
+- **零侵入**：只读外部 `DSH_DIR` 的已构建产物 `apps/cli/lib` + `apps/web/dist`，拷贝到 `resources/dsh`（`extraResources`，`asar` 外）`scripts/build.mjs:1`。
+- **插件热插拔保留**：`resources/dsh` 在 `asar` 外，`DSH_HOME` 仍走默认 `~/.dsh` `deepseek-harness/packages/util/home-paths/src/index.ts:87`，`healProfilesModuleFallback`/`reconcilePlugins` `deepseek-harness/apps/cli/src/profile-boot.ts:99` `plugin.ts:59` 仍从 `profile/node_modules` 解析。
+- **无边框 + 托盘常驻**：`frame:false` `titleBarOverlay:#0f0f0f` 去边框，`Tray` 双击/单击显示，`close` 隐藏到托盘而非退出 `src/main.mjs:1`；`退出` 菜单才真正 `app.quit()` 并 `kill dsh`。
+- **原生图标**：由 `deepseek-harness/apps/web/public/favicon.svg` 经 `sharp` 渲染 `build/icon.png/.ico/.icns` `scripts/generate-icons.mjs:1`，`BrowserWindow`/`Tray`/`electron-builder.yml:18` 共用。
+- **单窗口防抖**：`createWindow` 单例，`did-fail-load` 重试 30 次而非 `data:text/html` 无限刷新 `src/main.mjs:1`。
 
-```sh
-git submodule add https://github.com/<you>/dsh-packager.git packagers/dsh-packager
-```
-
-`dsh-hub` itself is pointer-only (`AGENTS.md`), so no build artifacts or binaries are committed there.
-
-## Usage
+## 快速开始
 
 ```sh
-pnpm install
-pnpm run build -- --dsh-dir ../deepseek-harness
-# or
-DSH_DIR=/path/to/deepseek-harness pnpm run build
+# 1. 安装打包器依赖（建议 npm，避免 pnpm 的 electron 占位）
+npm install
+# 或 pnpm install（需 node-linker=hoisted，已配 .npmrc）
 
-pnpm run dist        # current platform
-pnpm run dist:win    # NSIS (requires admin/Developer Mode for winCodeSign symlink)
-pnpm run dist:mac    # dmg
-pnpm run dist:linux  # AppImage+deb
-# artifacts -> dist/
+# 2. 先构建 dsh（若已有 lib/dist 可跳过）
+pnpm --dir <DSH_DIR> run build
+# DSH_DIR 为 deepseek-harness 检出（dsh-hub 的 deepseek-harness submodule 或独立检出）
+
+# 3. 拷贝 dsh 产物到打包器
+npm run build -- --dsh-dir <DSH_DIR>
+# 等价 DSH_DIR=<DSH_DIR> npm run build
+# --skip-build 跳过上一步的 pnpm build，仅拷贝
+
+# 4. 产出
+npm run dist:win   # Windows NSIS，需管理员/开发者模式（winCodeSign symlink）
+npm run dist       # 当前平台
+# 解压即用（免安装）：
+npx electron-packager . dsh-desktop --platform=win32 --arch=x64 --out=dist --overwrite --asar
+# 产物 dist/dsh-desktop-win32-x64/dsh-desktop.exe 或 dist/*.exe
 ```
 
-`--skip-build` skips `pnpm --dir $DSH_DIR run build` if `apps/cli/lib/bin.js` and `apps/web/dist` already exist.
+`--dsh-dir` 支持绝对/相对路径，默认 `../deepseek-harness`。`resources/dsh` 在 `.gitignore`，不提交。
 
-## How it preserves plugins
+## 图标
 
-* `resources/dsh` is `extraResources` (outside `asar`). `DSH_HOME` stays at default `~/.dsh` (`packages/util/home-paths/src/index.ts:resolveDshHome`), so existing profiles/plugins are shared — zero impact for users who already have `dsh`.
-* `healProfilesModuleFallback` and `reconcilePlugins` (`apps/cli/src/profile-boot.ts:99`, `apps/cli/src/plugin.ts:59`) still resolve out-of-tree bundles from `profile/node_modules`.
-* To isolate, launch with `DSH_HOME=$APP_USER_DATA/dsh`.
+```sh
+node scripts/generate-icons.mjs
+# 输入 deepseek-harness/apps/web/public/favicon.svg → build/icon.png(512) + icon.ico(16-512) + icon.icns
+```
 
-## Releases
+`build/` 为 `electron-builder.yml:3` 的 `buildResources`，`win/mac/linux` 的 `icon` 均指向它。
 
-Publish installers via GitHub Releases of this repo (electron-builder `publish:github`), not as git objects in `dsh-hub`. Link releases from `dsh-hub/README.md`.
+## 托盘与窗口
 
-## Requires
+- 关闭按钮 → 隐藏到托盘，`Tray` 常驻；双击/单击托盘恢复，右键菜单 `显示窗口` / `退出`。
+- `frame:false` 去边框，`titleBarOverlay` 在 Windows 11 保留窗口控制按钮；拖动需 `-webkit-app-region: drag`（已在 overlay 高度 28px 内）。
+- 单例 `BrowserWindow`，`app.on('activate')` 仅 `show()`，`window-all-closed` 不退出，`before-quit` 才 `kill dsh`。
 
-* Node `^22.19 || >=24`, `pnpm@11.7.0` (same as harness)
-* `dsh` built artifacts (`pnpm --dir $DSH_DIR run build`)
+## 原理
+
+```
+外部 DSH_DIR (deepseek-harness)
+  pnpm run build → apps/cli/lib + apps/web/dist
+        ↓ scripts/build.mjs --dsh-dir
+packagers/dsh-packager/resources/dsh (extraResources, asar 外)
+        ↓ electron-builder / electron-packager
+dist/win-unpacked 或 dist/dsh-desktop-win32-x64
+```
+
+`DSH_HOME` 默认 `~/.dsh`，已装 `dsh` 的用户无感；隔离用 `DSH_HOME=%APPDATA%\dsh-desktop` 启动。
+
+## 下载
+
+- **dsh-packager**：https://github.com/Lin-A1/dsh-packager/releases（`dsh-desktop-win32-x64.zip` 解压即用，`dsh-desktop Setup 0.1.0.exe` NSIS 安装包）
+- **dsh-hub** 复导出：https://github.com/Lin-A1/dsh-hub/releases（同上，顶层 `packagers/dsh-packager` 指针）
+
+## 要求
+
+- Node `^22.19 || >=24`，`pnpm@11.7.0`（与 harness 一致）或 `npm`（推荐，避免 pnpm 的 `electron` 占位）
+- `pnpm --dir <DSH_DIR> run build` 已产 `apps/cli/lib/bin.js` + `apps/web/dist`（`electron-builder` 需 `build/icon.*`，已生成）
+
+## 常见问题
+
+- **electron-builder 报 `Cannot create symbolic link`（winCodeSign）**：Windows 需管理员或开启 `设置 > 系统 > 开发者选项 > 开发人员模式`。
+- **`pnpm install` 后 `electron` 找不到**：`pnpm` 的 `electron` 在 `node_modules/electron` 为占位，改用 `npm install` 或已配 `.npmrc: node-linker=hoisted` 后重装。
+- **`electron-builder` 报 `Cannot compute electron version`**：`package.json` 的 `electron` 需固定版本 `32.2.0`（已 fix），勿用 `^`。
