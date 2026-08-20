@@ -1,5 +1,7 @@
 # dsh-packager — DeepSeek Harness 桌面打包器
 
+[English](README.en.md) | 中文
+
 > 指定 `DSH_DIR` 一键产出开箱即用的桌面安装包，不侵入 `deepseek-harness` 源码；打包后仍保留 `dsh plugin add` 热插拔。
 
 - **零侵入**：只读外部 `DSH_DIR` 的已构建产物 `apps/cli/lib` + `apps/web/dist`，拷贝到 `resources/dsh`（`extraResources`，`asar` 外）`scripts/build.mjs:1`。

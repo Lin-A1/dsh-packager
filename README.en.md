@@ -1,5 +1,7 @@
 # dsh-packager — DeepSeek Harness Desktop Packager
 
+English | [中文](README.md)
+
 > One-click produces a ready-to-use desktop installer from an external `DSH_DIR` without patching `deepseek-harness` sources; the bundle keeps `dsh plugin add` hot-plug.
 
 - **Zero intrusion**: read-only copy of built `apps/cli/lib` + `apps/web/dist` from external `DSH_DIR` into `resources/dsh` (`extraResources`, outside `asar`) `scripts/build.mjs:1`.
