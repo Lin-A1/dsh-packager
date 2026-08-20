@@ -4,6 +4,11 @@
   "private": true,
   "type": "module",
   "description": "Out-of-box packager for deepseek-harness (dsh) — specify DSH_DIR and build desktop installer without patching dsh",
+  "author": "Lin-A1 <860693883@qq.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Lin-A1/dsh-packager.git"
+  },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
   },
