@@ -12,9 +12,11 @@ extraResources:
   - from: "resources/dsh"
     to: "dsh"
     filter: ["**/*"]
-  # dsh icon for window + tray
+  # dsh icon for window + tray + shortcut IconLocation
   - from: "build/icon.png"
     to: "build/icon.png"
+  - from: "build/icon.ico"
+    to: "build/icon.ico"
 # fixed mode bakes cordis.yml inside asar via resources/fixed
 asar: true
 win:
@@ -26,6 +28,7 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
+  include: build/installer.nsh
 publish:
   provider: github
   releaseType: draft

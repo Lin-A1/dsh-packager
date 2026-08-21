@@ -83,7 +83,13 @@
 
 <div class="config">
   <div class="cfg-row">
-    <div class="field"><span>DSH 目录</span><input id="dshDir" value="../../deepseek-harness" /></div>
+    <div class="field"><span>DSH 源</span>
+      <select id="dshSource">
+        <option value="github" selected>GitHub 最新 (deepseek-ai/deepseek-harness)</option>
+        <option value="local">本地路径（候选）</option>
+      </select>
+    </div>
+    <div class="field" id="localField" style="display:none"><span>本地 DSH_DIR</span><input id="dshDir" value="../../deepseek-harness" style="width:260px" /></div>
     <div class="field"><span>模式</span>
       <select id="mode">
         <option value="fixed" selected>固化 · 不可变隔离版</option>

@@ -45,11 +45,26 @@ if (!gotLock) {
 async function startDsh() {
   const bin = resolveDshBin()
   if (!bin) return null
-  // Packaged electron binary acts as plain node for the dsh CLI entry
-  const env = { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
   const args = ['--profile', 'web', '--port', '3080', '--no-open']
-  console.log(`[dsh-desktop] spawn ${args.join(' ')} (compat)`)
-  const proc = spawn(process.execPath, [bin, ...args], { stdio: 'inherit', env })
+  // Electron's bundled node (20.x) is too old for dsh (^22.19||>=24) — prefer system node
+  const env = { ...process.env }
+  let proc
+  try {
+    proc = spawn('node', [bin, ...args], { stdio: 'inherit', env })
+    console.log('[dsh-desktop] spawn system node', args.join(' '))
+  } catch {
+    proc = spawn(process.execPath, [bin, ...args], { stdio: 'inherit', env: { ...env, ELECTRON_RUN_AS_NODE: '1' } })
+    console.log('[dsh-desktop] fallback electron-as-node')
+  }
+  proc.on('error', err => {
+    console.error('[dsh-desktop] spawn failed:', err.message)
+    if (err.code === 'ENOENT' && !proc._fallbackTried) {
+      proc._fallbackTried = true
+      const fb = spawn(process.execPath, [bin, ...args], { stdio: 'inherit', env: { ...env, ELECTRON_RUN_AS_NODE: '1' } })
+      fb.on('exit', c => console.log(`[dsh-desktop] dsh(fallback) exited ${c}`))
+      dshProc = fb
+    }
+  })
   proc.on('exit', code => console.log(`[dsh-desktop] dsh exited ${code}`))
   return proc
 }
@@ -83,7 +98,7 @@ function createWindow() {
     webPreferences: { nodeIntegration: false, contextIsolation: true },
   })
 
-  win.once('ready-to-show', () => { if (!isQuiting) win.show() })
+  win.once('ready-to-show', () => { /* show only after real content loads to avoid black screen */ })
   win.on('closed', () => { win = null })
 
   // Close hides to tray; tray Quit actually exits
@@ -124,7 +139,11 @@ function createWindow() {
     retries++
     const ready = await waitForPort('127.0.0.1', 3080, 400)
     if (!ready) { loadTimer = setTimeout(tryLoad, 700); return }
-    try { await win.loadURL(url); loaded = true } catch { loadTimer = setTimeout(tryLoad, 700) }
+    try {
+      await win.loadURL(url)
+      loaded = true
+      if (!isQuiting && win && !win.isDestroyed()) { win.show(); win.focus() }
+    } catch { loadTimer = setTimeout(tryLoad, 700) }
   }
   win.webContents.on('did-fail-load', (_e, code) => {
     if (loaded || isQuiting || code === -3) return
@@ -151,7 +170,7 @@ function createBuilderWindow() {
     titleBarOverlay: { color: '#0b0d10', symbolColor: '#ffffff', height: 32 },
     backgroundColor: '#0b0d10',
     show: false,
-    webPreferences: { nodeIntegration: false, contextIsolation: true, preload: join(__dirname, 'preload.mjs') },
+    webPreferences: { nodeIntegration: false, contextIsolation: true, preload: join(__dirname, 'preload.cjs') },
   })
   builderWin.once('ready-to-show', () => builderWin.show())
   builderWin.loadFile(join(__dirname, 'builder.html'))

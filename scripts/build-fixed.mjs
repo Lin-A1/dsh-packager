@@ -21,7 +21,30 @@ function getArg(name) {
 }
 const configPath = resolve(root, getArg('--config') ?? 'agent.config.yml')
 const cfg = yaml.load(readFileSync(configPath, 'utf8'))
-const dshDir = resolve(root, cfg.dshDir ?? '../deepseek-harness')
+const dshDirRaw = cfg.dshDir ?? '../deepseek-harness'
+
+// github:<owner>/<repo> — shallow clone to temp, then treat as local dir
+function materializeGithubSource(spec) {
+  const target = join(process.env.TEMP || '/tmp', 'dsh-packager-clone', spec.replace(/[^a-z0-9-]/gi, '_'))
+  if (existsSync(join(target, 'package.json'))) {
+    console.log(`[fixed] reusing cached clone ${target}`)
+    return target
+  }
+  console.log(`[fixed] cloning ${spec} -> ${target}`)
+  mkdirSync(dirname(target), { recursive: true })
+  const { spawnSync } = require('node:child_process')
+  const r = spawnSync('git', ['clone', '--depth', '1', spec.replace(/^github:/, 'https://github.com/') + '.git', target], {
+    stdio: 'inherit', shell: process.platform === 'win32',
+  })
+  if (r.status !== 0) {
+    console.error('[fixed] git clone failed — install git or use a local dshDir in agent.config.yml')
+    process.exit(1)
+  }
+  return target
+}
+
+const resolvedRaw = String(dshDirRaw).startsWith('github:') ? materializeGithubSource(String(dshDirRaw)) : dshDirRaw
+const dshDir = resolve(root, resolvedRaw)
 const mode = cfg.mode ?? 'fixed'
 console.log(`[fixed] mode=${mode} DSH_DIR=${dshDir} product=${cfg.productName} @${readFileSync(join(dshDir,'package.json'),'utf8').match(/"version"\s*:\s*"([^"]+)"/)?.[1]}`)
 
