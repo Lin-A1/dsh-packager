@@ -2,95 +2,125 @@
 <html lang="zh">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>dsh-packager — 构建器</title>
 <style>
-  :root{--bg:#070a0e;--panel:#0f1318;--card:#151a20;--border:#1e252e;--accent:#2563eb;--accent-2:#d97706;--text:#e8ecf1;--muted:#8b95a1;--hover:#1d232b}
+  :root{
+    --bg:#0b0d10; --panel:#12151a; --card:#161a20; --border:#232a33;
+    --accent:#4f8ef7; --amber:#f0a028; --text:#e8eaed; --muted:#9aa3ad; --dim:#6b7280;
+  }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font:13px/1.5 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-  header{position:sticky;top:0;z-index:10;background:rgba(10,14,18,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:12px;-webkit-app-region:drag}
-  header h1{margin:0;font-size:15px;font-weight:700;letter-spacing:.2px}
-  header small{color:var(--muted);font-size:11px}
-  header .actions{margin-left:auto;display:flex;gap:8px;-webkit-app-region:no-drag}
-  .wrap{max-width:1280px;margin:0 auto;padding:18px 20px}
-  .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 4px 12px #00000033}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  input,select,textarea{padding:8px 12px;background:#0c0f13;color:var(--text);border:1px solid #232b34;border-radius:8px;outline:none;transition:.15s;font:13px system-ui}
-  input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px #2563eb22}
-  button{padding:8px 16px;border-radius:8px;border:1px solid transparent;cursor:pointer;font-weight:600;transition:.15s;font-size:13px}
-  .primary{background:var(--accent);color:#fff;box-shadow:0 2px 8px #2563eb44}
-  .primary:hover{filter:brightness(1.08)}
-  .ghost{background:#1a1f25;color:var(--text);border-color:#2a333e}
-  .ghost:hover{background:#1f242b;border-color:#2f3947}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;transition:.15s;position:relative;overflow:hidden}
-  .card:hover{border-color:#2b3440;transform:translateY(-1px);box-shadow:0 6px 16px #00000033}
-  .card.unique{border-left:3px solid var(--accent-2)}
-  .card.multi{border-left:3px solid var(--accent)}
-  .card h3{margin:0;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
-  .card p{margin:0;color:#a9b0b9;font-size:12px;min-height:38px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.5}
-  .meta{font-size:11px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .badge{font-size:10px;padding:3px 8px;border-radius:999px;background:#1a1f25;color:#9aa3af;border:1px solid #2a333e}
-  .badge.unique{background:#2a1f04;color:var(--accent-2);border-color:#4a3508}
-  .badge.multi{background:#0e1e36;color:#60a5fa;border-color:#1e3a5f}
-  .toolbar{display:flex;gap:10px;align-items:center;margin:10px 0}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);font:13px/1.55 "Segoe UI",system-ui,-apple-system,sans-serif;display:flex;flex-direction:column}
+
+  /* titlebar */
+  .titlebar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);background:#0d1013;-webkit-app-region:drag}
+  .titlebar img{width:22px;height:22px;border-radius:5px}
+  .titlebar b{font-size:13px;font-weight:600}
+  .titlebar .sub{color:var(--muted);font-size:11px;margin-left:auto}
+
+  /* config bar */
+  .config{padding:14px 18px;border-bottom:1px solid var(--border);background:var(--panel)}
+  .cfg-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+  .field{display:flex;flex-direction:column;gap:4px}
+  .field span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  input,select{padding:7px 10px;background:#0c0f12;color:var(--text);border:1px solid var(--border);border-radius:7px;outline:none;font-size:12.5px;transition:border-color .15s}
+  input:focus,select:focus{border-color:var(--accent)}
+  #dshDir{width:300px} #productName{width:170px}
+
+  .actions{margin-left:auto;display:flex;gap:10px;align-items:center;padding-top:16px}
+  button{cursor:pointer;border-radius:7px;font-size:12.5px;font-weight:600;padding:8px 16px;border:1px solid transparent;transition:.15s}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:hover{filter:brightness(1.12)}
+  .btn-ghost{background:transparent;color:var(--muted);border-color:var(--border)}
+  .btn-ghost:hover{color:var(--text);border-color:#3a4553}
+  .badge-ver{font-size:11px;color:var(--dim);padding:6px 10px;background:#0c0f12;border-radius:6px;border:1px solid var(--border)}
+
+  /* add custom source */
+  .addrow{margin-top:12px;display:flex;gap:10px}
+  .addrow input{flex:1}
+
+  /* main split layout */
+  .main{flex:1;display:flex;overflow:hidden}
+  .sidebar{width:210px;border-right:1px solid var(--border);padding:14px 0;overflow-y:auto;background:#0d1013;flex-shrink:0}
+  .side-title{padding:0 16px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+  .cat-item{padding:7px 16px;font-size:12.5px;color:var(--muted);cursor:pointer;display:flex;justify-content:space-between;border-left:2px solid transparent;transition:.1s}
+  .cat-item:hover{color:var(--text);background:#14181e}
+  .cat-item.active{color:var(--accent);border-left-color:var(--accent);background:#12161c}
+  .cat-item .n{color:var(--dim);font-size:11px}
+
+  .content{flex:1;overflow-y:auto;padding:14px 18px}
+  .toolbar{display:flex;gap:10px;margin-bottom:12px;align-items:center}
   .toolbar input{flex:1}
-  #log{background:#0a0e12;border:1px solid var(--border);border-radius:10px;padding:12px;white-space:pre-wrap;max-height:220px;overflow:auto;font:12px/1.6 ui-monospace,Consolas,monospace;color:#cbd5e1}
-  .empty{grid-column:1 / -1;color:var(--muted);text-align:center;padding:32px;border:1px dashed #2a333e;border-radius:10px;background:#0c0f13}
-  .count{font-size:12px;color:var(--muted);white-space:nowrap}
-  .skill-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
-  .skill-form input{width:100%}
-  .link{color:var(--accent);text-decoration:none;font-size:11px;word-break:break-all}
-  .link:hover{text-decoration:underline}
+  .count{font-size:11px;color:var(--dim);white-space:nowrap}
+
+  /* plugin list — link+desc rows */
+  .plist{display:flex;flex-direction:column;gap:8px}
+  .prow{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:10px 14px;transition:.12s}
+  .prow:hover{border-color:#33404f;background:#181d24}
+  .prow.selected{border-color:var(--accent);background:#131c29}
+  .pcheck{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+  .pinfo{flex:1;min-width:0}
+  .pname{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .pname a{color:var(--accent);text-decoration:none;font-size:11px;font-weight:400}
+  .pname a:hover{text-decoration:underline}
+  .pdesc{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ptag{font-size:10px;padding:2px 8px;border-radius:99px;border:1px solid var(--border);color:var(--dim);flex-shrink:0}
+  .ptag.unique{color:var(--amber);border-color:#4a3508;background:#2a2006}
+
+  /* log footer */
+  .logwrap{border-top:1px solid var(--border);background:#0a0c0f;padding:10px 18px;max-height:160px;overflow-y:auto}
+  pre#log{margin:0;font:11.5px/1.6 Consolas,ui-monospace,monospace;color:#a8b3bf;white-space:pre-wrap;word-break:break-all}
+  .empty{color:var(--dim);text-align:center;padding:40px;font-size:13px}
 </style>
 </head>
 <body>
-<header>
-  <img src="../build/icon.png" width="28" height="28" style="border-radius:7px" onerror="this.style.display='none'" />
-  <div>
-    <h1>dsh-packager — 构建器</h1>
-    <small>外接 dsh-hub + 用户自定义 · 唯一 / 不限数 · 固化 / 兼容</small>
-  </div>
-  <div class="actions">
-    <span id="dshVersion" class="badge">—</span>
-    <button class="ghost" onclick="window.close()">关闭</button>
-  </div>
-</header>
 
-<div class="wrap">
-  <div class="panel">
-    <div class="row">
-      <label>DSH 目录 <input id="dshDir" value="../../deepseek-harness" style="width:300px" /></label>
-      <label>模式
-        <select id="mode">
-          <option value="fixed" selected>固化（不可变 · 隔离）</option>
-          <option value="compat">兼容（热插拔 · ~/.dsh）</option>
-        </select>
-      </label>
-      <label>productName <input id="productName" value="dsh-fixed-demo" style="width:180px" /></label>
-      <button class="ghost" onclick="fetchCatalog()">刷新</button>
-    </div>
-    <div class="panel" style="margin-top:12px;background:#0c0f13">
-      <div style="font-weight:600;margin-bottom:8px">添加自定义插件（链接 + 描述）</div>
-      <div class="skill-form">
-        <input id="customLink" placeholder="链接：github:owner/repo  或  npm:@scope/pkg  或  https://..." />
-        <input id="customDesc" placeholder="描述：该插件做什么（可选）" />
-      </div>
-      <div class="row" style="margin-top:8px;justify-content:flex-end">
-        <button class="ghost" onclick="addCustom()">添加</button>
-      </div>
-    </div>
-    <div class="toolbar">
-      <input id="search" placeholder="搜索插件 name / 分类 / 描述" oninput="render()" />
-      <select id="filterCat" onchange="render()"><option value="">全部分类</option></select>
-      <span id="count" class="count"></span>
-      <button class="primary" onclick="build()" style="margin-left:auto">一键出包</button>
-    </div>
-  </div>
-
-  <div id="list" class="grid"></div>
-  <pre id="log">就绪 — 正在加载插件列表…</pre>
+<div class="titlebar">
+  <img src="../build/icon.png" onerror="this.style.display='none'" />
+  <b>dsh-packager</b>
+  <span class="sub">外接插件固化 / 兼容 · 双模式构建器</span>
 </div>
+
+<div class="config">
+  <div class="cfg-row">
+    <div class="field"><span>DSH 目录</span><input id="dshDir" value="../../deepseek-harness" /></div>
+    <div class="field"><span>模式</span>
+      <select id="mode">
+        <option value="fixed" selected>固化 · 不可变隔离版</option>
+        <option value="compat">兼容 · 热插拔 ~/.dsh 版</option>
+      </select>
+    </div>
+    <div class="field"><span>productName</span><input id="productName" value="dsh-fixed-demo" /></div>
+    <div class="actions">
+      <span id="verBadge" class="badge-ver">—</span>
+      <button class="btn-ghost" onclick="fetchCatalog()">刷新</button>
+      <button class="btn-primary" onclick="build()">一键出包 →</button>
+    </div>
+  </div>
+  <div class="addrow">
+    <input id="customSpec" placeholder="+ 添加自定义源：github:owner/repo · npm:@scope/pkg · file:./path（回车添加）" onkeydown="if(event.key==='Enter')addCustom()" />
+  </div>
+</div>
+
+<div class="main">
+  <aside class="sidebar">
+    <div class="side-title">分类</div>
+    <div id="catList"></div>
+  </aside>
+  <section class="content">
+    <div class="toolbar">
+      <input id="search" placeholder="搜索名称 / 描述…" oninput="render()" />
+      <label style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--muted)">
+        <input type="checkbox" id="onlySelected" onchange="render()" style="width:auto" /> 只看已选
+      </label>
+      <span id="count" class="count"></span>
+    </div>
+    <div id="plist" class="plist"></div>
+  </section>
+</div>
+
+<div class="logwrap"><pre id="log">就绪 — 正在加载插件目录…</pre></div>
+
 <script type="module" src="./builder.mjs"></script>
 </body>
 </html>

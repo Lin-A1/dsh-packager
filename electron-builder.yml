@@ -4,32 +4,23 @@ directories:
   buildResources: build
   output: dist/desktop
 files:
-  - "src/**/*"
-  - "resources/**/*"
+  - "src/main.mjs"
+  - "src/preload.mjs"
   - "package.json"
-  - "plugins.catalog.json"
-  - "agent.config.yml"
 extraResources:
-  # bundled dsh artifacts — produced by scripts/build.mjs from external DSH_DIR
+  # dsh runtime (compat mode) — outside asar so profile node_modules resolution works
   - from: "resources/dsh"
     to: "dsh"
     filter: ["**/*"]
+  # dsh icon for window + tray
+  - from: "build/icon.png"
+    to: "build/icon.png"
+# fixed mode bakes cordis.yml inside asar via resources/fixed
 asar: true
-# keep profile resolution outside asar: DSH_HOME stays at ~/.dsh (resolveDshHome)
-# see deepseek-harness/packages/util/home-paths/src/index.ts
 win:
   target: nsis
   icon: build/icon.ico
   sign: null
-  signAndEditExecutable: false
-  verifyUpdateCodeSignature: false
-  forceCodeSigning: false
-mac:
-  target: dmg
-  icon: build/icon.icns
-linux:
-  target: [AppImage, deb]
-  icon: build/icon.png
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

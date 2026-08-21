@@ -28,10 +28,11 @@ const ico = await pngToIco([png16, png32, png48, png128, png256, png512])
 writeFileSync(join(buildDir, 'icon.ico'), ico)
 console.log('wrote icon.ico')
 
-// ICNS: for now copy 512 png as icns (electron-builder accepts png, but generate proper icns via png2icons if available)
+// ICNS: proper icns via png2icons if available
 try {
-  const { convert } = await import('png2icons')
-  const icns = convert(png512, { type: 'icns' })
+  const png2icons = await import('png2icons')
+  const conv = png2icons.default ?? png2icons
+  const icns = conv.createICNS(png256)
   if (icns) {
     writeFileSync(join(buildDir, 'icon.icns'), icns)
     console.log('wrote icon.icns via png2icons')
