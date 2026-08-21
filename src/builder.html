@@ -2,32 +2,64 @@
 <html lang="zh">
 <head>
 <meta charset="UTF-8" />
-<title>dsh-packager Builder</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>dsh-packager — 构建器</title>
 <style>
-  body{font-family:system-ui;background:#0f0f0f;color:#eee;margin:0;padding:16px}
-  h2{margin:8px 0} .row{display:flex;gap:12px;flex-wrap:wrap}
-  .card{border:1px solid #333;padding:8px;border-radius:8px;min-width:260px;background:#1a1a1a}
-  .unique{border-color:#f59e0b} .multi{border-color:#3b82f6}
-  button{padding:8px 14px;background:#3b82f6;color:#fff;border:0;border-radius:6px;cursor:pointer}
-  select,input{padding:6px;background:#222;color:#eee;border:1px solid #333;border-radius:4px}
+  *{box-sizing:border-box}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:#0a0a0a;color:#e5e5e5;margin:0;padding:20px;line-height:1.5}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  header h1{font-size:18px;margin:0;font-weight:600}
+  header small{color:#888}
+  .panel{background:#141414;border:1px solid #2a2a2a;border-radius:10px;padding:14px;margin-bottom:14px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+  .card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px}
+  .card.unique{border-left:3px solid #f59e0b}
+  .card.multi{border-left:3px solid #3b82f6}
+  .card h3{margin:0;font-size:14px;font-weight:600}
+  .card p{margin:0;color:#aaa;font-size:12px;min-height:36px}
+  .card .meta{font-size:11px;color:#777}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  input,select{padding:7px 10px;background:#1f1f1f;color:#eee;border:1px solid #333;border-radius:6px;outline:none}
+  input:focus,select:focus{border-color:#3b82f6}
+  button{padding:8px 14px;background:#2563eb;color:#fff;border:0;border-radius:6px;cursor:pointer;font-weight:500}
+  button.secondary{background:#2a2a2a;color:#eee}
+  button:active{transform:scale(0.98)}
+  #log{background:#0f0f0f;border:1px solid #222;border-radius:8px;padding:10px;white-space:pre-wrap;max-height:220px;overflow:auto;font-size:12px;color:#ccc}
+  .badge{font-size:10px;padding:2px 6px;border-radius:10px;background:#222;color:#aaa}
+  .badge.unique{background:#3a2a0a;color:#f59e0b}
+  .badge.multi{background:#0f2040;color:#60a5fa}
 </style>
 </head>
 <body>
-<h2>dsh-packager — 构建器（外接插件固化 / 兼容二选一）</h2>
-<div class="row">
-  <label>DSH 版本 <input id="dshDir" value="../deepseek-harness" style="width:260px" /></label>
-  <label>模式
-    <select id="mode"><option value="compat">兼容（热插拔，~/.dsh）</option><option value="fixed" selected>固化（不可变，隔离）</option></select>
-  </label>
-  <label>productName <input id="productName" value="dsh-fixed-demo" /></label>
+<header>
+  <img src="../build/icon.png" width="28" height="28" style="border-radius:6px" onerror="this.style.display='none'" />
+  <div>
+    <h1>dsh-packager — 构建器</h1>
+    <small>外接 dsh-hub + 用户自定义源 · 唯一/不限数插件区分 · 双模式固化/兼容</small>
+  </div>
+</header>
+
+<div class="panel">
+  <div class="row">
+    <label>DSH 版本 <input id="dshDir" value="../../deepseek-harness" style="width:280px" title="任意 deepseek-harness 检出/tag/commit" /></label>
+    <label>模式
+      <select id="mode">
+        <option value="fixed" selected>固化（不可变，隔离）</option>
+        <option value="compat">兼容（热插拔，~/.dsh）</option>
+      </select>
+    </label>
+    <label>productName <input id="productName" value="dsh-fixed-demo" /></label>
+    <span id="dshVersion" class="badge" style="margin-left:auto"></span>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <input id="customSpec" placeholder="用户自定义源：github:owner/repo  或  npm:@scope/pkg  或  file:./path" style="flex:1" />
+    <button class="secondary" onclick="addCustom()">添加</button>
+    <button onclick="build()">一键出包</button>
+  </div>
 </div>
-<div class="row" style="margin:12px 0">
-  <input id="customSpec" placeholder="用户自定义源 github:owner/repo 或 npm:pkg 或 file:./path" style="flex:1" />
-  <button onclick="addCustom()">添加</button>
-  <button onclick="build()">一键出包</button>
-</div>
-<div id="list" class="row"></div>
-<pre id="log" style="background:#111;padding:8px;white-space:pre-wrap;max-height:240px;overflow:auto"></pre>
+
+<div id="list" class="grid"></div>
+<pre id="log">就绪 — 正在加载插件列表…</pre>
 <script type="module" src="./builder.mjs"></script>
 </body>
 </html>

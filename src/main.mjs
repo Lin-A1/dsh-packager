@@ -69,6 +69,8 @@ function createWindow() {
     return win
   }
   const iconPath = resolveIcon()
+  // Use native dsh icon for window; fallback to packager icon
+  const winIcon = iconPath ? nativeImage.createFromPath(iconPath) : undefined
   win = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -82,7 +84,7 @@ function createWindow() {
       height: 28,
     },
     backgroundColor: '#0f0f0f',
-    icon: iconPath ? nativeImage.createFromPath(iconPath) : undefined,
+    icon: winIcon,
     show: false,
     webPreferences: { nodeIntegration: false, contextIsolation: true },
   })
@@ -90,6 +92,7 @@ function createWindow() {
   win.once('ready-to-show', () => { if (!isQuiting) win.show() })
   win.on('closed', () => { win = null })
 
+  // Only dsh desktop hides to tray; packager (builder) quits directly — tray only for dsh
   win.on('close', (e) => {
     if (!isQuiting) {
       e.preventDefault()
@@ -97,34 +100,51 @@ function createWindow() {
     }
   })
 
+  // Tray only for dsh desktop (not for builder)
   if (!tray && iconPath) {
-    const trayIcon = nativeImage.createFromPath(iconPath)
-    tray = new Tray(trayIcon.resize({ width: 16, height: 16 }))
-    tray.setToolTip('dsh desktop — click to show, right-click to quit')
-    const contextMenu = Menu.buildFromTemplate([
-      { label: '显示窗口', click: () => { if (win) { win.show(); win.focus() } else createWindow() } },
-      { type: 'separator' },
-      { label: '退出', click: () => { isQuiting = true; app.quit() } },
-    ])
-    tray.setContextMenu(contextMenu)
-    tray.on('double-click', () => { if (win) { win.show(); win.focus() } else createWindow() })
-    tray.on('click', () => { if (win && !win.isVisible()) { win.show(); win.focus() } })
+    try {
+      const trayImg = nativeImage.createFromPath(iconPath)
+      // Ensure 16x16 for tray visibility on Windows
+      const resized = trayImg.getSize().width > 16 ? trayImg.resize({ width: 16, height: 16 }) : trayImg
+      // Windows requires template image false for color
+      if (process.platform === 'win32') resized.setTemplateImage(false)
+      tray = new Tray(resized)
+      tray.setToolTip('dsh desktop — 双击显示，右键退出')
+      const contextMenu = Menu.buildFromTemplate([
+        { label: '显示窗口', click: () => { if (win && !win.isDestroyed()) { win.show(); win.focus() } else createWindow() } },
+        { type: 'separator' },
+        { label: '退出 dsh', click: () => { isQuiting = true; app.quit() } },
+      ])
+      tray.setContextMenu(contextMenu)
+      tray.on('double-click', () => { if (win && !win.isDestroyed()) { win.show(); win.focus() } else createWindow() })
+      tray.on('click', () => { if (win && !win.isDestroyed() && !win.isVisible()) { win.show(); win.focus() } })
+    } catch (e) {
+      console.error('[tray] create failed', e)
+    }
   }
 
+  // Single load with port-ready check, not infinite data-url loop
   const url = 'http://127.0.0.1:3080'
   let retries = 0
   let loadTimer = null
+  let loaded = false
   const tryLoad = () => {
-    if (!win || win.isDestroyed() || isQuiting) return
-    if (retries >= 30) return
-    win.loadURL(url).catch(() => {
-      if (retries++ < 30 && !isQuiting) loadTimer = setTimeout(tryLoad, 600)
+    if (!win || win.isDestroyed() || isQuiting || loaded) return
+    if (retries >= 30) {
+      win.loadURL(`data:text/html,<body style="background:#0f0f0f;color:#eee;font-family:system-ui;padding:24px"><h3>dsh 未就绪</h3><p>已重试 30 次，请检查 dsh 是否在 3080 端口启动</p><button onclick="location.href='${url}'">重试</button>`)
+      return
+    }
+    retries++
+    win.loadURL(url).then(() => { loaded = true }).catch(() => {
+      loadTimer = setTimeout(tryLoad, 700)
     })
   }
-  win.webContents.on('did-fail-load', (_e, _code, _desc, validatedURL) => {
-    if (validatedURL === url && retries < 30 && !isQuiting) {
-      retries++
-      loadTimer = setTimeout(tryLoad, 600)
+  win.webContents.on('did-fail-load', (_e, code, _desc, validatedURL) => {
+    if (loaded || isQuiting) return
+    // -3 = ABORTED (win closed), ignore
+    if (code === -3) return
+    if (validatedURL === url && retries < 30) {
+      loadTimer = setTimeout(tryLoad, 700)
     }
   })
   win.on('closed', () => { if (loadTimer) clearTimeout(loadTimer) })
@@ -168,16 +188,30 @@ function createBuilderWindow() {
   return builderWin
 }
 
-// IPC for builder — external catalog (dsh-hub + user input) + DSH version
+// IPC for builder — external catalog (dsh-hub + user custom) + DSH version
 ipcMain.handle('builder:listPlugins', async (_e, dshDir) => {
+  // Prefer bundled catalog (for installed packager where dsh-hub/plugins not present)
+  try {
+    const catalogPath = join(__dirname, '../plugins.catalog.json')
+    if (existsSync(catalogPath)) {
+      const cached = JSON.parse(readFileSync(catalogPath, 'utf8'))
+      if (Array.isArray(cached) && cached.length) return cached
+    }
+  } catch {}
   try {
     const { listPlugins } = await import('../scripts/list-plugins.mjs')
     const dir = dshDir ? resolve(dshDir) : resolve(join(__dirname, '../../deepseek-harness'))
-    return listPlugins(dir)
+    const live = listPlugins(dir)
+    if (live.length) return live
   } catch (e) {
-    console.error('[builder] listPlugins failed', e)
-    return []
+    console.error('[builder] listPlugins live failed', e)
   }
+  // Fallback to bundled catalog
+  try {
+    const catalogPath = join(__dirname, '../plugins.catalog.json')
+    if (existsSync(catalogPath)) return JSON.parse(readFileSync(catalogPath, 'utf8'))
+  } catch {}
+  return []
 })
 
 ipcMain.handle('builder:dsh-version', async (_e, dshDir) => {
