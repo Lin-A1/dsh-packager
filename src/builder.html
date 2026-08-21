@@ -5,39 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>dsh-packager — 构建器</title>
 <style>
-  :root{--bg:#080a0c;--panel:#111418;--card:#171b1f;--border:#242a30;--accent:#3b82f6;--accent-2:#f59e0b;--text:#e6e8eb;--muted:#8a9099}
+  :root{--bg:#070a0e;--panel:#0f1318;--card:#151a20;--border:#1e252e;--accent:#2563eb;--accent-2:#d97706;--text:#e8ecf1;--muted:#8b95a1;--hover:#1d232b}
   *{box-sizing:border-box}
-  body{margin:0;background:radial-gradient(1200px 600px at 20% -10%, #1e293b33, transparent), var(--bg);color:var(--text);font:13px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-  header{position:sticky;top:0;z-index:2;background:#0a0d0fcc;backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;gap:14px;-webkit-app-region:drag}
+  body{margin:0;background:var(--bg);color:var(--text);font:13px/1.5 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  header{position:sticky;top:0;z-index:10;background:rgba(10,14,18,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:12px;-webkit-app-region:drag}
   header h1{margin:0;font-size:15px;font-weight:700;letter-spacing:.2px}
-  header small{color:var(--muted)}
+  header small{color:var(--muted);font-size:11px}
   header .actions{margin-left:auto;display:flex;gap:8px;-webkit-app-region:no-drag}
-  .wrap{max-width:1200px;margin:0 auto;padding:16px 20px}
-  .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px}
+  .wrap{max-width:1280px;margin:0 auto;padding:18px 20px}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 4px 12px #00000033}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  input,select{padding:8px 10px;background:#0f1215;color:var(--text);border:1px solid #2a3038;border-radius:8px;outline:none;transition:.15s}
-  input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px #3b82f633}
-  button{padding:8px 14px;border-radius:8px;border:1px solid transparent;cursor:pointer;font-weight:600;transition:.15s}
-  .primary{background:var(--accent);color:#fff}
-  .primary:hover{filter:brightness(1.1)}
-  .ghost{background:#1a1f25;color:var(--text);border-color:#2a3038}
-  .ghost:hover{background:#1f242b}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;transition:.15s}
-  .card:hover{border-color:#2f3945;transform:translateY(-1px)}
+  input,select,textarea{padding:8px 12px;background:#0c0f13;color:var(--text);border:1px solid #232b34;border-radius:8px;outline:none;transition:.15s;font:13px system-ui}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px #2563eb22}
+  button{padding:8px 16px;border-radius:8px;border:1px solid transparent;cursor:pointer;font-weight:600;transition:.15s;font-size:13px}
+  .primary{background:var(--accent);color:#fff;box-shadow:0 2px 8px #2563eb44}
+  .primary:hover{filter:brightness(1.08)}
+  .ghost{background:#1a1f25;color:var(--text);border-color:#2a333e}
+  .ghost:hover{background:#1f242b;border-color:#2f3947}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;transition:.15s;position:relative;overflow:hidden}
+  .card:hover{border-color:#2b3440;transform:translateY(-1px);box-shadow:0 6px 16px #00000033}
   .card.unique{border-left:3px solid var(--accent-2)}
   .card.multi{border-left:3px solid var(--accent)}
   .card h3{margin:0;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
-  .card p{margin:0;color:#a9b0b9;font-size:12px;min-height:36px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .meta{font-size:11px;color:var(--muted);display:flex;gap:8px;align-items:center}
-  .badge{font-size:10px;padding:2px 7px;border-radius:999px;background:#1f242b;color:#9aa3af;border:1px solid #2a3038}
-  .badge.unique{background:#2a2006;color:var(--accent-2);border-color:#4a3508}
-  .badge.multi{background:#0f1f3a;color:#60a5fa;border-color:#1e3a5f}
-  .toolbar{display:flex;gap:8px;align-items:center;margin:8px 0}
+  .card p{margin:0;color:#a9b0b9;font-size:12px;min-height:38px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.5}
+  .meta{font-size:11px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .badge{font-size:10px;padding:3px 8px;border-radius:999px;background:#1a1f25;color:#9aa3af;border:1px solid #2a333e}
+  .badge.unique{background:#2a1f04;color:var(--accent-2);border-color:#4a3508}
+  .badge.multi{background:#0e1e36;color:#60a5fa;border-color:#1e3a5f}
+  .toolbar{display:flex;gap:10px;align-items:center;margin:10px 0}
   .toolbar input{flex:1}
-  #log{background:#0b0e11;border:1px solid var(--border);border-radius:10px;padding:10px;white-space:pre-wrap;max-height:200px;overflow:auto;font:12px/1.5 ui-monospace,Consolas,monospace;color:#cbd5e1}
-  .empty{grid-column:1 / -1;color:var(--muted);text-align:center;padding:28px;border:1px dashed #2a3038;border-radius:10px;background:#0f1215}
-  .count{font-size:12px;color:var(--muted)}
+  #log{background:#0a0e12;border:1px solid var(--border);border-radius:10px;padding:12px;white-space:pre-wrap;max-height:220px;overflow:auto;font:12px/1.6 ui-monospace,Consolas,monospace;color:#cbd5e1}
+  .empty{grid-column:1 / -1;color:var(--muted);text-align:center;padding:32px;border:1px dashed #2a333e;border-radius:10px;background:#0c0f13}
+  .count{font-size:12px;color:var(--muted);white-space:nowrap}
+  .skill-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+  .skill-form input{width:100%}
+  .link{color:var(--accent);text-decoration:none;font-size:11px;word-break:break-all}
+  .link:hover{text-decoration:underline}
 </style>
 </head>
 <body>
@@ -45,7 +49,7 @@
   <img src="../build/icon.png" width="28" height="28" style="border-radius:7px" onerror="this.style.display='none'" />
   <div>
     <h1>dsh-packager — 构建器</h1>
-    <small>外接 dsh-hub + 用户自定义源 · 唯一 / 不限数 · 固化 / 兼容双模式</small>
+    <small>外接 dsh-hub + 用户自定义 · 唯一 / 不限数 · 固化 / 兼容</small>
   </div>
   <div class="actions">
     <span id="dshVersion" class="badge">—</span>
@@ -56,7 +60,7 @@
 <div class="wrap">
   <div class="panel">
     <div class="row">
-      <label>DSH 目录 <input id="dshDir" value="../../deepseek-harness" style="width:280px" /></label>
+      <label>DSH 目录 <input id="dshDir" value="../../deepseek-harness" style="width:300px" /></label>
       <label>模式
         <select id="mode">
           <option value="fixed" selected>固化（不可变 · 隔离）</option>
@@ -66,15 +70,21 @@
       <label>productName <input id="productName" value="dsh-fixed-demo" style="width:180px" /></label>
       <button class="ghost" onclick="fetchCatalog()">刷新</button>
     </div>
-    <div class="row" style="margin-top:10px">
-      <input id="customSpec" placeholder="用户自定义源：github:owner/repo  或  npm:@scope/pkg  或  file:./path" style="flex:1" />
-      <button class="ghost" onclick="addCustom()">添加</button>
-      <button class="primary" onclick="build()">一键出包</button>
+    <div class="panel" style="margin-top:12px;background:#0c0f13">
+      <div style="font-weight:600;margin-bottom:8px">添加自定义插件（链接 + 描述）</div>
+      <div class="skill-form">
+        <input id="customLink" placeholder="链接：github:owner/repo  或  npm:@scope/pkg  或  https://..." />
+        <input id="customDesc" placeholder="描述：该插件做什么（可选）" />
+      </div>
+      <div class="row" style="margin-top:8px;justify-content:flex-end">
+        <button class="ghost" onclick="addCustom()">添加</button>
+      </div>
     </div>
     <div class="toolbar">
-      <input id="search" placeholder="搜索插件 name / category / 描述" oninput="render()" />
+      <input id="search" placeholder="搜索插件 name / 分类 / 描述" oninput="render()" />
       <select id="filterCat" onchange="render()"><option value="">全部分类</option></select>
       <span id="count" class="count"></span>
+      <button class="primary" onclick="build()" style="margin-left:auto">一键出包</button>
     </div>
   </div>
 
