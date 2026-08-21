@@ -3,6 +3,9 @@ const logEl = document.getElementById('log')
 const dshDirEl = document.getElementById('dshDir')
 const modeEl = document.getElementById('mode')
 const dshVersionEl = document.getElementById('dshVersion')
+const searchEl = document.getElementById('search')
+const filterCatEl = document.getElementById('filterCat')
+const countEl = document.getElementById('count')
 let catalog = []
 
 async function fetchCatalog() {
@@ -16,18 +19,25 @@ async function fetchCatalog() {
     catalog = []
     logEl.textContent = '加载失败: ' + e.message
   }
+  // populate category filter
+  const cats = [...new Set(catalog.map(c=>c.category))].sort()
+  filterCatEl.innerHTML = '<option value="">全部分类</option>' + cats.map(c=>`<option value="${c}">${c}</option>`).join('')
   if (!catalog.length) {
-    logEl.textContent += '\n未发现插件，请检查 DSH_DIR 是否为 deepseek-harness 检出（含 packages/）且 dsh-hub/plugins 存在'
+    logEl.textContent += '\n未发现插件，请检查 DSH_DIR 是否为 deepseek-harness 检出（含 packages/）且 dsh-hub/plugins 已 git submodule update --init'
   } else {
-    logEl.textContent = `已加载 ${catalog.length} 个插件（唯一 ${catalog.filter(c=>c.unique).length} / 不限数 ${catalog.filter(c=>!c.unique).length}）`
+    logEl.textContent = `已加载 ${catalog.length} 个插件（唯一 ${catalog.filter(c=>c.unique).length} / 不限数 ${catalog.filter(c=>!c.unique).length}）— 输入关键词或分类筛选`
   }
   render()
 }
 function render() {
+  const q = (searchEl.value || '').toLowerCase().trim()
+  const catFilter = filterCatEl.value
   listEl.innerHTML = ''
-  // Group by category
+  let shown = 0
   const byCat = {}
   for (const p of catalog) {
+    if (catFilter && p.category !== catFilter) continue
+    if (q && !(p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || (p.description||'').toLowerCase().includes(q))) continue
     if (!byCat[p.category]) byCat[p.category] = []
     byCat[p.category].push(p)
   }
@@ -35,11 +45,15 @@ function render() {
     const header = document.createElement('div')
     header.style.gridColumn = '1 / -1'
     header.style.fontSize = '12px'
-    header.style.color = '#888'
-    header.style.marginTop = '8px'
-    header.textContent = `${cat} — ${items.length} 个`
+    header.style.color = '#8a9099'
+    header.style.marginTop = '6px'
+    header.style.display = 'flex'
+    header.style.alignItems = 'center'
+    header.style.gap = '8px'
+    header.innerHTML = `<span style="font-weight:600;color:#cbd5e1">${cat}</span><span style="flex:1;height:1px;background:#1e242b"></span><span>${items.length} 个</span>`
     listEl.appendChild(header)
     for (const p of items) {
+      shown++
       const card = document.createElement('div')
       card.className = 'card ' + (p.unique ? 'unique' : 'multi')
       const badge = p.unique ? '唯一' : '不限数'
@@ -47,8 +61,8 @@ function render() {
       card.innerHTML = `
         <div style="display:flex;align-items:center;gap:8px"><h3>${p.name}</h3><span class="${badgeCls}">${badge}</span></div>
         <p>${p.description || '—'}</p>
-        <div class="meta">id: <input data-id="${p.id}" value="${p.id}" style="width:160px" /> · ${p.category}</div>
-        <label style="display:flex;align-items:center;gap:6px"><input type="${p.unique?'radio':'checkbox'}" name="${p.unique?'unique-'+p.category:p.id}" data-name="${p.name}" ${p.enabled?'checked':''} /> ${p.unique ? '选用（同类唯一）' : '添加'}</label>
+        <div class="meta">id <input data-id="${p.id}" value="${p.id}" style="width:150px" /> · ${p.category}</div>
+        <label style="display:flex;align-items:center;gap:6px;margin-top:4px"><input type="${p.unique?'radio':'checkbox'}" name="${p.unique?'unique-'+p.category:p.id}" data-name="${p.name}" ${p.enabled?'checked':''} /> ${p.unique ? '选用（同类唯一）' : '添加'}</label>
       `
       if (p.unique) {
         const radio = card.querySelector('input[type=radio]')
@@ -61,21 +75,26 @@ function render() {
       listEl.appendChild(card)
     }
   }
-  if (!catalog.length) {
+  countEl.textContent = `显示 ${shown} / ${catalog.length}`
+  if (!shown) {
     const empty = document.createElement('div')
+    empty.className = 'empty'
     empty.style.gridColumn = '1 / -1'
-    empty.style.color = '#666'
-    empty.style.fontSize = '13px'
-    empty.innerHTML = '暂无插件 — 请检查 <code>dsh-hub/plugins</code> 是否已 <code>git submodule update --init</code>，或在上方输入 <code>github:owner/repo</code> 手动添加'
+    empty.innerHTML = q || catFilter ? `无匹配 — 试试清空搜索或切换分类` : `暂无插件 — 请检查 <code>dsh-hub/plugins</code> 是否已 <code>git submodule update --init</code>，或在上方输入 <code>github:owner/repo</code> 手动添加`
     listEl.appendChild(empty)
   }
 }
 window.addCustom = () => {
   const spec = document.getElementById('customSpec').value.trim()
   if (!spec) return
-  const id = spec.split('/').pop().split(':').pop().replace(/[^a-z0-9-]/gi,'-').slice(0,24).toLowerCase() || 'custom'
+  const id = spec.split('/').pop().split(':').pop().replace(/[^a-z0-9-]/gi,'-').slice(0,28).toLowerCase() || 'custom'
   catalog.push({ id, name: spec, description: '用户自定义', category: 'custom', unique: false, enabled: true })
   document.getElementById('customSpec').value = ''
+  // add custom to filter if not exists
+  if (![...filterCatEl.options].some(o=>o.value==='custom')) {
+    const opt = document.createElement('option')
+    opt.value = 'custom'; opt.textContent = 'custom'; filterCatEl.appendChild(opt)
+  }
   render()
 }
 window.build = async () => {
@@ -94,10 +113,7 @@ window.build = async () => {
     if (unique) {
       if (seenUnique.has(inp.name)) return
       seenUnique.add(inp.name)
-    } else {
-      // multi: allow duplicate name with different id, so don't dedup by name
     }
-    // id globally unique check later in main
     plugins.push({ id, name })
   })
   if (!plugins.length) {
@@ -114,4 +130,6 @@ window.build = async () => {
 }
 modeEl.addEventListener('change', render)
 dshDirEl.addEventListener('change', fetchCatalog)
+searchEl.addEventListener('input', render)
+filterCatEl.addEventListener('change', render)
 fetchCatalog()

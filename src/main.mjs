@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process'
 import { join, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { createConnection } from 'node:net'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const dshApp = join(process.resourcesPath, 'dsh/apps/cli/lib/bin.js')
@@ -41,6 +42,24 @@ let win = null
 let tray = null
 let isQuiting = false
 let builderWin = null
+
+// Single instance lock — prevent infinite windows from second launch
+const gotLock = app.requestSingleInstanceLock()
+if (!gotLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    const target = isBuilderMode() ? builderWin : win
+    if (target && !target.isDestroyed()) {
+      if (target.isMinimized()) target.restore()
+      target.show()
+      target.focus()
+    } else {
+      if (isBuilderMode()) createBuilderWindow()
+      else createWindow()
+    }
+  })
+}
 
 async function startDsh() {
   const bin = resolveDshBin()
@@ -123,29 +142,37 @@ function createWindow() {
     }
   }
 
-  // Single load with port-ready check, not infinite data-url loop
+  // Single load with TCP port-ready check — no infinite data-url loop, no duplicate windows
   const url = 'http://127.0.0.1:3080'
-  let retries = 0
   let loadTimer = null
   let loaded = false
-  const tryLoad = () => {
+  let retries = 0
+  function waitForPort(host, port, timeoutMs) {
+    return new Promise((resolve) => {
+      const socket = createConnection({ host, port }, () => { socket.end(); resolve(true) })
+      socket.on('error', () => resolve(false))
+      setTimeout(() => { try { socket.destroy(); } catch {} resolve(false) }, timeoutMs)
+    })
+  }
+  const tryLoad = async () => {
     if (!win || win.isDestroyed() || isQuiting || loaded) return
     if (retries >= 30) {
-      win.loadURL(`data:text/html,<body style="background:#0f0f0f;color:#eee;font-family:system-ui;padding:24px"><h3>dsh 未就绪</h3><p>已重试 30 次，请检查 dsh 是否在 3080 端口启动</p><button onclick="location.href='${url}'">重试</button>`)
+      win.loadURL(`data:text/html,<body style="background:#0f0f0f;color:#eee;font-family:system-ui;padding:24px"><h3>dsh 未就绪</h3><p>已重试 30 次（3080 端口未开），请检查 dsh 日志</p><button onclick="location.reload()">重试</button>`)
       return
     }
     retries++
-    win.loadURL(url).then(() => { loaded = true }).catch(() => {
-      loadTimer = setTimeout(tryLoad, 700)
-    })
-  }
-  win.webContents.on('did-fail-load', (_e, code, _desc, validatedURL) => {
-    if (loaded || isQuiting) return
-    // -3 = ABORTED (win closed), ignore
-    if (code === -3) return
-    if (validatedURL === url && retries < 30) {
+    const ready = await waitForPort('127.0.0.1', 3080, 400)
+    if (!ready) { loadTimer = setTimeout(tryLoad, 700); return }
+    try {
+      await win.loadURL(url)
+      loaded = true
+    } catch {
       loadTimer = setTimeout(tryLoad, 700)
     }
+  }
+  win.webContents.on('did-fail-load', (_e, code) => {
+    if (loaded || isQuiting || code === -3) return
+    if (retries < 30) loadTimer = setTimeout(tryLoad, 700)
   })
   win.on('closed', () => { if (loadTimer) clearTimeout(loadTimer) })
   loadTimer = setTimeout(tryLoad, 900)
