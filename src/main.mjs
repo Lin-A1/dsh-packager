@@ -45,10 +45,11 @@ if (!gotLock) {
 async function startDsh() {
   const bin = resolveDshBin()
   if (!bin) return null
-  const isFixed = existsSync(fixedCordis)
-  const args = ['--profile', isFixed ? 'fixed' : 'web', '--port', '3080', '--no-open']
-  console.log(`[dsh-desktop] spawn ${args.join(' ')} (${isFixed ? 'fixed' : 'compat'})`)
-  const proc = spawn(process.execPath, [bin, ...args], { stdio: 'inherit', env: process.env })
+  // Packaged electron binary acts as plain node for the dsh CLI entry
+  const env = { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
+  const args = ['--profile', 'web', '--port', '3080', '--no-open']
+  console.log(`[dsh-desktop] spawn ${args.join(' ')} (compat)`)
+  const proc = spawn(process.execPath, [bin, ...args], { stdio: 'inherit', env })
   proc.on('exit', code => console.log(`[dsh-desktop] dsh exited ${code}`))
   return proc
 }
