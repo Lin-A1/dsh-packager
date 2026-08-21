@@ -1,6 +1,10 @@
 node_modules/
 dist/
-resources/dsh/
+resources/
+fixed/
+plugins.catalog.json
+package-lock.json
+src/builder.css
 *.log
 .DS_Store
 out/

@@ -16,18 +16,24 @@
   "main": "src/main.mjs",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "build:fixed": "node scripts/build-fixed.mjs",
+    "catalog": "node scripts/list-plugins.mjs",
     "build:dir": "node scripts/build.mjs --dir",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
+    "dist:packager": "electron-builder --config electron-builder.packager.yml --win",
+    "dist:desktop": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
     "dist:linux": "electron-builder --linux",
     "typecheck": "tsc --noEmit",
     "dev": "electron .",
+    "dev:builder": "electron . -- --builder",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
-    "execa": "^9.5.1"
+    "execa": "^9.5.1",
+    "js-yaml": "^4.1.0"
   },
   "devDependencies": {
     "electron": "32.2.0",

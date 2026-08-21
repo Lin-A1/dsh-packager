@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<title>dsh-packager Builder</title>
+<style>
+  body{font-family:system-ui;background:#0f0f0f;color:#eee;margin:0;padding:16px}
+  h2{margin:8px 0} .row{display:flex;gap:12px;flex-wrap:wrap}
+  .card{border:1px solid #333;padding:8px;border-radius:8px;min-width:260px;background:#1a1a1a}
+  .unique{border-color:#f59e0b} .multi{border-color:#3b82f6}
+  button{padding:8px 14px;background:#3b82f6;color:#fff;border:0;border-radius:6px;cursor:pointer}
+  select,input{padding:6px;background:#222;color:#eee;border:1px solid #333;border-radius:4px}
+</style>
+</head>
+<body>
+<h2>dsh-packager — 构建器（外接插件固化 / 兼容二选一）</h2>
+<div class="row">
+  <label>DSH 版本 <input id="dshDir" value="../deepseek-harness" style="width:260px" /></label>
+  <label>模式
+    <select id="mode"><option value="compat">兼容（热插拔，~/.dsh）</option><option value="fixed" selected>固化（不可变，隔离）</option></select>
+  </label>
+  <label>productName <input id="productName" value="dsh-fixed-demo" /></label>
+</div>
+<div class="row" style="margin:12px 0">
+  <input id="customSpec" placeholder="用户自定义源 github:owner/repo 或 npm:pkg 或 file:./path" style="flex:1" />
+  <button onclick="addCustom()">添加</button>
+  <button onclick="build()">一键出包</button>
+</div>
+<div id="list" class="row"></div>
+<pre id="log" style="background:#111;padding:8px;white-space:pre-wrap;max-height:240px;overflow:auto"></pre>
+<script type="module" src="./builder.mjs"></script>
+</body>
+</html>
