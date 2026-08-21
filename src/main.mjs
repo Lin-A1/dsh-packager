@@ -30,13 +30,10 @@ function resolveIcon() {
 
 function isBuilderMode() {
   if (process.env.BUILDER === '1') return true
-  // Packager app (productName dsh-packager) always shows builder
-  try {
-    if (app.getName().includes('packager') || app.getName().includes('Packager')) return true
-  } catch {}
   if (!app.isPackaged) return true
-  if (existsSync(fixedCordis) || existsSync(fixedFallback) || existsSync(dshApp) || existsSync(dshFallback)) return false
-  return true
+  // Packager (builder) has no dsh/fixed resources; dsh-desktop has them
+  const hasDsh = existsSync(dshApp) || existsSync(dshFallback) || existsSync(fixedCordis) || existsSync(fixedFallback)
+  return !hasDsh
 }
 
 let dshProc = null
