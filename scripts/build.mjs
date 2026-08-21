@@ -7,8 +7,12 @@
  *   pnpm run build -- --dsh-dir G:\path\to\dsh --skip-build
  */
 import { cpSync, existsSync, mkdirSync, rmSync, readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { join, resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const root = resolve(__dirname, '..')
 
 const args = process.argv.slice(2)
 function getArg(name) {
@@ -19,9 +23,10 @@ function getArg(name) {
   return undefined
 }
 
-const dshDir = resolve(getArg('--dsh-dir') ?? process.env.DSH_DIR ?? '../deepseek-harness')
+const dshDirRaw = getArg('--dsh-dir') ?? process.env.DSH_DIR ?? '../../deepseek-harness'
+const dshDir = resolve(root, dshDirRaw)
 const skipBuild = args.includes('--skip-build')
-const outDir = resolve('resources/dsh')
+const outDir = join(root, 'resources/dsh')
 
 if (!existsSync(join(dshDir, 'package.json'))) {
   console.error(`[packager] DSH_DIR not found: ${dshDir}`)
